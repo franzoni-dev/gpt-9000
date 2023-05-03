@@ -1,0 +1,74 @@
+#!/bin/bash
+
+# add your openai api key here
+token=$OPENAI
+
+# disable globbing, to prevent OpenAI's command from being prematurely expanded
+set -f
+
+# get user cli arguments as a string
+# args=$*
+
+echo -e "\033[0;90;1m󱚣 : \033[0;90mCommand to search \033[0m" # set color to blue
+read
+
+# save the current working directory to a variable
+cwd=$(pwd)
+
+# use curl to get openai api response
+response=$(curl -s https://api.openai.com/v1/chat/completions \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer '$token'' \
+  -d '{
+  "model": "gpt-3.5-turbo",
+  "messages": [{"role": "system", "content": "You are a helpful assistant. You will generate '$SHELL' commands based on user input. Your response should contain ONLY the command and NO explanation. To seperate commands, instead use ; or &&. The current working directory is '$cwd'."}, {"role": "user", "content": "'"$REPLY"'"}]
+}')
+
+# if OpenAI reported an error, tell the user, then exit the script
+error=$(echo $response | jq -r '.error.message')
+if [ "$error" != "null" ]
+then
+    echo -e -n "\033[0;31m" # set color to red
+    echo "Error:"
+    echo $error
+    echo "󱚡"
+    exit 1
+fi
+
+# parse the 'content' field of the response which is in JSON format
+command=$(echo $response | jq -r '.choices[0].message.content')
+
+# echo the command
+echo -e -n "\033[0;90m󱚣 : Ready \n" # set color to red
+echo " : $(echo $command | bat -p --language='bash' --italic-text='always' --color='always')"
+# echo $command | highlight --out-format=truecolor --force=bash
+
+# make the user confirm the command
+echo -e "\033[0;90;1m󱚣 : \033[0;90mPress enter to continue " # set color to blue
+read -n 1 -s -r
+
+
+# if the user presses n, exit the script
+if ! [[ $REPLY == "" ]]
+then
+    echo -e -n "\033[0;31m" # set color to red
+    #echo $REPLY
+    echo "󱚝 : Aborted"
+    exit 0
+fi
+echo -e -n "\033[0;92m" # set color to green
+#echo $REPLY
+echo "󱚣 : Executing command..."
+echo ""
+
+# re-enable globbing
+set +f
+
+# execute the command
+echo -e -n "\033[0m" # set color to blue
+eval "$command"
+
+# navigate back to the original working directory
+cd $cwd
+
+exit 1
