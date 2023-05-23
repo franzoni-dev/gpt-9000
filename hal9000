@@ -1,0 +1,57 @@
+#!/bin/sh
+
+TOKEN=$OPENAI
+
+CWD=$(pwd)
+
+gum style --border normal --margin "1" --padding "1 1" --border-foreground 250 " $(gum style --foreground 212 '󱚣 : Hi! what do you need?')"
+
+SCOPE=$(gum write --base.italic --height=3 --placeholder "Command to search ")
+
+response=$(gum spin -s points --title "󱚣 : Searching your command" --spinner.padding="0 2" --show-output -- curl -s https://api.openai.com/v1/chat/completions \
+        -H 'Content-Type: application/json' \
+        -H 'Authorization: Bearer '$TOKEN'' \
+        -d '{
+        "model": "gpt-3.5-turbo",
+        "messages": [{"role": "system", "content": "You are a helpful assistant. You will generate '$SHELL' commands based on user input. Your response should contain multiple choices of the command and NO explanation. to seperate commands use ## . The current working directory is '$CWD'."}, {"role": "user", "content": "'"$SCOPE"'"}]
+        }' \
+        --fail)
+
+# echo "$response"
+
+ERROR=$(echo "$response" | jq -r '.error.message')
+if [ "$ERROR" != "null" ]
+    then
+        echo -e -n "\033[0;31m" # set color to red
+        echo "Error: 󱚡󱚡󱚡󱚡󱚡󱚡"
+        echo $ERROR
+        echo "󱚡"
+        exit 1
+fi
+
+COMMAND=$(echo "$response" | jq -r '.choices[0].message.content')
+
+SELECTION="$(echo -e "$COMMAND" | \
+                sed -e 's/[[:space:]]##[[:space:]]/\n/g' \
+                    -e 's/##[[:space:]]/\n/g' \
+                    -e 's/##/\n/g' \
+                    -e 's/^[[:space:]]*//g' \
+                    -e 's/[[:space:]]*$//g'| \
+                bat -p --language='bash' --italic-text='always' --color='always' | \
+                gum choose --cursor '󰭆  ' \
+                            --limit 1 \
+                            --cursor-prefix "[ 󱨚 ] " \
+                            --selected-prefix "[ 󱚥 ] " \
+                            --unselected-prefix "[  ] " \
+                            --cursor.foreground 99 \
+                            --selected.foreground 99)" 
+
+box=$(gum style --border normal --margin "1" --padding "1 1" --border-foreground 250 --align left --width 50 "$(gum style --foreground 212 "󱚣 : Do you want to execute this command?" " :  $SELECTION")")
+
+CLEANED=$(echo "$SELECTION" | sed 's/\x1b\[[0-9;]*m//g')
+
+gum confirm "$box" --prompt.align="left" --default=false --affirmative "Run" --negative "Exit" && eval "$CLEANED"
+
+cd $CWD
+
+exit 1
