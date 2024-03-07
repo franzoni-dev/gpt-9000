@@ -8,7 +8,7 @@ gum style --border normal --margin "1" --padding "1 1" --border-foreground 250 "
 
 SCOPE=$(gum write --base.italic --height=3 --placeholder "Command to search ")
 
-response=$(gum spin -s points --title "󱚣 : Searching your command" --spinner.padding="0 2" --show-output -- curl -s https://api.openai.com/v1/chat/completions \
+response=$(gum spin -s points --title "  󱚣 : Searching your command" --spinner.padding="0 2" --show-output -- curl -s https://api.openai.com/v1/chat/completions \
         -H 'Content-Type: application/json' \
         -H 'Authorization: Bearer '$TOKEN'' \
         -d '{
